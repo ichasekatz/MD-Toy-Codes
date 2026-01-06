@@ -1,0 +1,28 @@
+units metal
+atom_style atomic
+boundary p p p
+
+lattice diamond 3.57
+region box block 0 5 0 5 0 5
+create_box 1 box
+create_atoms 1 box
+
+mass 1 12.01
+
+pair_style airebo 3.0
+pair_coeff * * CH.airebo C
+
+region top_half block INF INF INF INF 2.5 INF
+region bottom_half block INF INF INF INF INF 2.5
+group top_atoms region top_half
+group bottom_atoms region bottom_half
+
+fix 1 top_atoms addforce 0.0 -0.75 0.0
+fix 2 bottom_atoms addforce 0.0 0.75 0.0
+fix 3 all nve
+#fix momentum all momentum 10 linear 1 1 1
+
+dump 1 all custom 100 diamond.dump id type x y z
+timestep 0.001
+run 2000
+

@@ -1,0 +1,157 @@
+# Applying uniaxial tension (stress) in x-direction
+#
+units metal
+dimension 3
+boundary p p p
+
+#
+# read restart file from previous run
+#
+
+read_restart	restart_at300K.npt2 remap
+
+#
+# Potentials
+#
+
+pair_style	tersoff
+pair_coeff      * * ./SiC.tersoff C Si 
+
+mass 1   12.0107
+mass 2   28.0855
+
+# 
+# T0 is temperature at which we got the restart file from
+# P0 is pressure which we got from the restart file
+#
+variable T0		equal 300
+variable T1		equal 300
+variable T2		equal 300
+variable P0		equal 1
+variable P1		equal 1
+variable P2		equal 2500
+
+variable step_ramp	equal 500
+variable step_relax	equal 1500
+variable step_equi      equal 8000
+variable step_cont	equal 1000
+variable step_begp	equal 1000
+variable thermo_step	equal 100
+
+variable vstep  equal           "step"
+variable vpe    equal           "pe"
+variable vtemp  equal           "temp"
+variable venth  equal        "enthalpy"
+variable vvol   equal           "vol"
+variable vlx	equal		"lx"
+variable vly	equal		"ly"
+variable vlz	equal		"lz"
+variable vpress equal           "press"
+variable vte	equal		"etotal"
+variable vke    equal		"ke"
+
+variable vpxx	equal		"pxx"
+variable vpyy   equal           "pyy"
+variable vpzz   equal           "pzz"
+variable vpxy   equal           "pxy"
+variable vpxz   equal           "pxz"
+variable vpyz   equal           "pyz"
+
+#
+# Initialized with RESTART file
+# Potentials read
+# continuation run below switches from iso to ANISO
+
+timestep 	0.001 # fs
+
+thermo          100
+thermo_style    custom step temp ke pe etotal enthalpy vol lx press pxx pyy pzz pxy pxz pyz atoms
+fix cont        all npt temp ${T0} ${T0} 0.1 aniso ${P0} ${P0} 1.0  
+fix cnt_out     all print 10 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy} ${vpxz} ${vpyz}" &
+                file npt${T0}Kxx${P0}bar.cnt  screen no
+run             ${step_cont}
+
+write_restart   restart_${T0}Kxx${P0}bar.eql
+
+unfix           cont
+unfix           cnt_out
+
+reset_timestep  0
+
+#
+# LOOP OVER tensile stresses along x - find changes in x-length y-length and z-length for strains
+#  tensile load is (negative) as opposed to engineering conventions used - following pressure conventions
+# in lampps 
+
+variable i index 1 2 3 4 5 6 7 8 9 10
+
+
+label pres_loop
+
+variable P1 equal	"2500 - v_i*2500"
+variable P2 equal 	"-v_i*2500"
+
+print ${P1}
+print ${P2}
+#
+
+reset_timestep 0
+
+#
+# Run at T0 and P2
+#
+
+thermo          100
+thermo_style    custom step temp ke pe etotal enthalpy vol lx ly lz press pxx pyy pzz pxy pxz pyz 
+fix ramp        all npt temp ${T0} ${T0} 0.1 aniso ${P1} ${P2} 1. 
+fix rmp_out     all print 10 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vly} ${vlz} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy} ${vpxz} ${vpyz}" &
+                file npt${T0}Kxx${P2}bar.rmp  screen no
+
+run             ${step_ramp}
+
+write_restart   restart_${T0}K${P2}bar.rmp
+
+unfix           ramp
+unfix           rmp_out
+
+#
+# settle at P2
+#
+
+fix relax       all npt temp ${T0} ${T0} 0.1 aniso ${P2} ${P2} 1. 
+fix rlx_out     all print 10 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy} ${vpxz} ${vpyz}" &
+                file npt${T0}Kxx${P2}bar.rlx  screen no
+
+run             ${step_relax}
+
+write_restart   restart_${T0}Kxx${P2}bar.rlx
+
+unfix           relax
+unfix           rlx_out
+
+#
+# Run at P2 for equilibrium data 
+# 
+
+reset_timestep  0
+
+fix equi        all npt temp ${T0} ${T0} 0.1 aniso ${P2} ${P2} 1.
+fix eq_out      all print 10 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy} ${vpxz} ${vpyz}" &
+                file npt${T0}Kxx${P2}bar.eql  screen no
+
+run             ${step_equi}
+
+write_restart   restart_${T0}Kxx${P2}bar.eql
+
+unfix           equi
+unfix           eq_out
+
+
+next i
+
+jump SELF pres_loop
+
+
+
+
+print "Job Complete"

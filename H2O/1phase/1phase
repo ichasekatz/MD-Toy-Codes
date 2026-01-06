@@ -1,0 +1,43 @@
+units real
+atom_style full
+region box block 0 31.08 0 31.08 0 31.08
+create_box 2 box  bond/types 1 angle/types 1 &
+                extra/bond/per/atom 2 extra/angle/per/atom 1 &
+		extra/special/per/atom 2
+
+mass 1 15.9994
+mass 2 1.008
+
+pair_style lj/cut/coul/cut 10.0
+pair_coeff 1 1 0.1553 3.166
+pair_coeff 1 2 0.0    1.0
+pair_coeff 2 2 0.0    1.0
+
+bond_style zero
+bond_coeff 1 1
+angle_style zero
+angle_coeff 1 109.47
+
+molecule water watermol.data
+create_atoms 0 random 1000 34564 NULL mol water 25367 overlap 1.33
+
+timestep 1.0
+fix rigid all shake 0.0001 10 10000 b 1 a 1
+velocity all create 300.0 12345
+
+thermo 1
+thermo_style custom step temp pe vol press density
+
+dump freeze all atom 100 1phase.dump
+
+fix 1 all nvt temp 300 300 1
+run 5000
+
+unfix 1
+fix 2 all nvt temp 300 250 1
+run 50000
+
+unfix 2
+fix 3 all nvt temp 250 300 1
+run 50000
+

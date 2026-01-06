@@ -1,0 +1,29 @@
+units metal
+dimension 3
+boundary p p p
+atom_style atomic
+
+region my_box block 0 50 0 50 0 50
+create_box 2 my_box
+
+mass 1 10
+mass 2 10
+
+create_atoms 1 single 25 25 25
+create_atoms 2 single 30 25 25
+
+group atom1 type 1
+group atom2 type 2
+
+fix 1 atom1 addforce 10.0 0.0 0.0
+fix 2 atom2 addforce 0.0 10.0 0.0
+
+velocity atom1 set 0.0 0.0 0.0
+velocity atom2 set 0.0 0.0 0.0
+
+fix 3 all nve
+
+dump 1 all custom 100 movingatoms.dump id type x y z fx fy fz
+
+timestep 0.001
+run 1000

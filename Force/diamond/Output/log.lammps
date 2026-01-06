@@ -1,0 +1,85 @@
+LAMMPS (29 Aug 2024 - Update 1)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+units metal
+atom_style atomic
+boundary p p p
+
+lattice diamond 3.57
+Lattice spacing in x,y,z = 3.57 3.57 3.57
+region box block 0 5 0 5 0 5
+create_box 1 box
+Created orthogonal box = (0 0 0) to (17.85 17.85 17.85)
+  1 by 1 by 1 MPI processor grid
+create_atoms 1 box
+Created 1000 atoms
+  using lattice units in orthogonal box = (0 0 0) to (17.85 17.85 17.85)
+  create_atoms CPU = 0.000 seconds
+
+mass 1 12.01
+
+pair_style airebo 3.0
+pair_coeff * * CH.airebo C
+Reading airebo potential file CH.airebo with DATE: 2011-10-25
+
+region top_half block INF INF INF INF 2.5 INF
+region bottom_half block INF INF INF INF INF 2.5
+group top_atoms region top_half
+500 atoms in group top_atoms
+group bottom_atoms region bottom_half
+550 atoms in group bottom_atoms
+
+fix 1 top_atoms addforce 0.0 -0.75 0.0
+fix 2 bottom_atoms addforce 0.0 0.75 0.0
+fix 3 all nve
+#fix momentum all momentum 10 linear 1 1 1
+
+dump 1 all custom 100 diamond.dump id type x y z
+timestep 0.001
+run 2000
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 12.2
+  ghost atom cutoff = 12.2
+  binsize = 6.1, bins = 3 3 3
+  1 neighbor lists, perpetual/occasional/extra = 1 0 0
+  (1) pair airebo, perpetual
+      attributes: full, newton on, ghost
+      pair build: full/bin/ghost
+      stencil: full/ghost/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 11.4 | 11.4 | 11.4 Mbytes
+   Step          Temp          E_pair         E_mol          TotEng         Press     
+         0   0             -7454.5787      0             -7454.5787     -49515.803    
+      2000   17962.722     -7384.333       0             -5064.7907      421845.61    
+Loop time of 75.6082 on 1 procs for 2000 steps with 1000 atoms
+
+Performance: 2.285 ns/day, 10.501 hours/ns, 26.452 timesteps/s, 26.452 katom-step/s
+98.9% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 63.829     | 63.829     | 63.829     |   0.0 | 84.42
+Neigh   | 11.597     | 11.597     | 11.597     |   0.0 | 15.34
+Comm    | 0.10175    | 0.10175    | 0.10175    |   0.0 |  0.13
+Output  | 0.015855   | 0.015855   | 0.015855   |   0.0 |  0.02
+Modify  | 0.036327   | 0.036327   | 0.036327   |   0.0 |  0.05
+Other   |            | 0.02806    |            |       |  0.04
+
+Nlocal:           1000 ave        1000 max        1000 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:          12080 ave       12080 max       12080 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:              0 ave           0 max           0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:   1.3432e+06 ave  1.3432e+06 max  1.3432e+06 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 1343200
+Ave neighs/atom = 1343.2
+Neighbor list builds = 72
+Dangerous builds = 0
+
+Total wall time: 0:01:15

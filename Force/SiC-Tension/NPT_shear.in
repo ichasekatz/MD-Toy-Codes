@@ -1,0 +1,175 @@
+#
+# Shear stress applied measure the shear strain and determine the shear modulus (C44=C55=C66)
+#
+units metal
+dimension 3
+boundary p p p 
+
+#
+# read restart file from previous run
+#
+
+read_restart	restart_at300K.npt2 remap
+
+# CHANGE BOX to triclinic
+
+change_box      all triclinic
+
+#
+# Potentials
+#
+
+pair_style	tersoff
+pair_coeff      * * ./SiC.tersoff C Si 
+
+mass 1   12.0107
+mass 2   28.0855
+
+# 
+# T0 is temperature at which we got the restart file from
+# P0 is pressure which we got from the restart file
+#
+variable T0		equal 300
+variable T1		equal 300
+variable T2		equal 300
+variable P0		equal 1
+variable P1		equal 1
+variable P2		equal 1000
+
+variable step_ramp	equal 500
+variable step_relax	equal 2000
+variable step_equi      equal 5000
+variable step_cont	equal 2000
+variable step_begp	equal 1000
+variable thermo_step	equal 100
+
+variable vstep  equal           "step"
+variable vpe    equal           "pe"
+variable vtemp  equal           "temp"
+variable venth  equal        "enthalpy"
+variable vvol   equal           "vol"
+variable vlx	equal		"lx"
+variable vly	equal		"ly"
+variable vlz	equal		"lz"
+variable vxy	equal		"xy"
+variable vxz	equal		"xz"
+variable vyz	equal		"yz"
+variable vpress equal           "press"
+variable vte	equal		"etotal"
+variable vke    equal		"ke"
+
+variable vpxx	equal		"pxx"
+variable vpyy   equal           "pyy"
+variable vpzz   equal           "pzz"
+variable vpxy   equal           "pxy"
+variable vpxz   equal           "pxz"
+variable vpyz   equal           "pyz"
+
+# Initialization with RESTART file
+# Switched the system into triclinic - observe the change in fix all npt - lines
+
+timestep 	0.001 # fs
+
+thermo          100
+thermo_style    custom step temp ke pe etotal enthalpy vol lx ly lz press pxx pyy pzz pxy pxz pyz atoms
+fix cont        all npt temp ${T0} ${T0} 0.1 x 0 0 0.1 y 0 0 0.1 z 0 0 0.1 xy ${P0} ${P0} 1.0
+fix cnt_out     all print 10 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vly} ${vlz} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy}" &
+                file npt${T0}Kxy${P0}bar.cnt  screen no
+run             ${step_cont}
+
+write_restart   restart_${T0}Kxy${P0}bar.cnt
+
+unfix           cont
+unfix           cnt_out
+
+#
+# Set a run for 0 pressure state for the 
+reset_timestep  0
+
+fix equa       all npt temp ${T0} ${T0} 0.1 x 0 0 1. y 0 0 1. z 0 0 1. xy 0 0 1. xz 0 0 1. yz 0 0 1.0
+fix equa_out   all print 10 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vly} ${vlz} ${vxy} ${vxz} ${vyz} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy}" &
+                file npt${T0}Kxy${P0}bar.equ  screen no
+run             ${step_equi}
+
+write_restart   restart_${T0}Kxy${P0}bar.equ
+
+unfix           equa
+unfix           equa_out
+
+reset_timestep  0
+
+#
+# LOOP OVER pressures to see where the pressure crosses over
+#
+
+variable i index 1 2 3 4 5 6 7 8 9 10 
+
+label shear_loop
+
+variable P1 equal	"v_i*1000 - 999"
+variable P2 equal 	"v_i*1000"
+
+print ${P1}
+print ${P2}
+#
+
+reset_timestep 0
+
+#
+# Run at T0 and P2
+#
+
+thermo          100
+thermo_style    custom step temp ke pe etotal enthalpy vol lx press pxx pyy pzz pyz 
+fix ramp        all npt temp ${T0} ${T0} 0.1 x 0 0 1. y 0. 0. 1.  z 0. 0. 1. xy ${P1} ${P2} 1. 
+fix rmp_out     all print 10 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vly} ${vlz} ${vxy} ${vxz} ${vyz} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy}" &
+                file npt${T0}Kxy${P2}bar.rmp  screen no
+
+run             ${step_ramp}
+
+write_restart   restart_${T0}Kxy${P2}bar.rmp
+
+unfix           ramp
+unfix           rmp_out
+
+#
+# settle at P2
+#
+
+fix relax       all npt temp ${T0} ${T0} 0.1 x 0 0 1  y 0. 0. 1  z 0. 0. 1 xy ${P2} ${P2} 1
+fix rlx_out     all print 10 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vly} ${vlz} ${vxy} ${vxz} ${vyz} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy}" &
+                file npt${T0}Kxy${P2}bar.rlx  screen no
+
+run             ${step_relax}
+
+write_restart   restart_${T0}Kxy${P2}bar.rlx
+
+unfix           relax
+unfix           rlx_out
+
+#
+# Run at P2 for equilibrium data 
+# 
+
+reset_timestep  0
+
+fix equi        all npt temp ${T0} ${T0} 0.1 x 0 0 1 y 0. 0. 1  z 0. 0. 1 xy ${P2} ${P2} 1
+fix eq_out      all print 1 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vly} ${vlz} ${vxy} ${vxz} ${vyz} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy}" &
+                file npt${T0}Kxy${P2}bar.eql  screen no
+
+run             ${step_equi}
+
+write_restart   restart_${T0}Kxy${P2}bar.eql
+
+unfix           equi
+unfix           eq_out
+
+
+next i
+
+jump SELF shear_loop
+
+
+
+
+print "Job Complete"

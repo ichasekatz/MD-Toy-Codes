@@ -1,0 +1,144 @@
+# Variables
+# Specific to model
+variable latparam 	equal 4.05
+variable dim 		equal 10
+#
+#Temperature variables used
+variable T0		equal 300
+variable T1		equal 300
+variable T2		equal 300
+
+#Pressure variables used
+variable P0		equal 1
+variable P1		equal 1
+variable P2		equal 2500
+#
+#Number of steps 
+variable step_ramp	equal 	1000
+variable step_setl	equal	4000
+variable step_samp	equal  25000
+#
+#Logfile output frequency
+variable thermo_step	equal	10
+
+#
+#Variables defined for writing into named files
+#
+variable vstep  equal           "step"
+variable vtemp  equal           "temp"
+variable vpe    equal           "pe"
+variable vke	equal		"ke"
+variable vte	equal		"etotal"
+variable venth  equal        	"enthalpy"
+variable vvol   equal		"vol"
+variable vlx	equal		"lx"
+variable vly	equal		"ly"
+variable vlz	equal		"lz"
+variable vpres  equal           "press"
+variable vpxx   equal		"pxx"
+variable vpyy	equal		"pyy"
+variable vpzz	equal		"pzz"
+variable vpxy	equal		"pxy"
+variable vpyz	equal		"pyz"
+variable vpxz	equal		"pxz"
+
+# Initialization
+
+units		metal 
+dimension 	3
+boundary 	p p p 
+atom_style	atomic
+
+#
+
+read_restart     restart_300K.sample.in remap
+
+##
+## Crystal/Structure Setup
+##
+#lattice 	fcc ${latparam}
+#region		myreg block 0 ${dim} 0 ${dim} 0 ${dim} 
+#create_box	1 myreg
+#create_atoms 	1 box
+#
+mass		1 26.9815386
+
+#
+#Potentials
+
+pair_style 	eam/alloy
+pair_coeff	* * ./Al99.eam.alloy Al
+
+
+timestep 	0.001 # fs
+
+# CREATING A LOOP
+
+#
+# pressuring upward from 1 bar to 25000 bar
+
+variable i index 1 2 3 4 5 6 7 8 9 10
+
+label temp_loop
+
+variable P1 equal       "v_i*2500 - 2499"
+variable P2 equal       "v_i*2500"
+
+print ${T1}
+print ${T2}
+# Run Ramping from P1 to P2  bars 
+
+thermo          10
+thermo_style    custom step temp ke pe etotal press vol lx atoms
+fix ramp        all npt temp ${T2} ${T2} 0.1 iso ${P1} ${P2} 0.1 
+fix ramp_out    all print 1 "${vstep} ${vke} ${vpe} ${vte} ${vpres} ${vpxx} ${vpyy} ${vpzz} ${vpxy} ${vvol} ${vlx}" &
+                file ramp_${T2}.out  screen no
+
+run             ${step_ramp}
+
+write_restart   restart_${T2}K${P2}bar.ramp
+
+unfix           ramp
+unfix           ramp_out
+
+# Run Settling to equilibrium segment at P2 bars 
+#
+
+thermo          10
+thermo_style    custom step temp ke pe etotal press vol lx ly lz atoms
+
+fix setl        all npt temp ${T2} ${T2} 0.1 iso ${P2} ${P2} 0.1
+fix setl_out    all print 10 "${vstep} ${vke} ${vpe} ${vte} ${vpres} ${vpxx} ${vpyy} ${vpzz} ${vpxy} ${vvol} ${vlx}" &
+                file setl_${T2}K${P2}bar.out  screen no
+
+run             ${step_setl}
+
+write_restart   restart_${T2}K${P2}.setl
+
+unfix           setl
+unfix           setl_out
+
+# Run Sampling part
+#
+thermo          10
+thermo_style    custom step temp ke pe etotal press vol lx ly lz atoms
+fix samp        all npt temp ${T2} ${T2} 0.1 iso ${P2} ${P2} 0.1
+fix samp_out    all print 1 "${vstep} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vpres} ${vpxx} ${vpyy} ${vpzz} ${vpxy} ${vvol} ${vlx}" &
+                file samp_${T2}K${P2}bar.out  screen no
+
+run             ${step_samp}
+
+write_restart   restart_${T2}K${P2}.sample
+
+unfix           samp
+unfix           samp_out
+
+
+next i
+
+jump SELF temp_loop
+
+
+
+print "Job Complete"
+

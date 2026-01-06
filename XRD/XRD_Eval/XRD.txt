@@ -1,0 +1,4 @@
+
+This script evaluates xray diffraction data from LAMMPS simulations.
+
+A graph is created to show the changes in xray diffraction patterns over changes in temperature. These graphs can help predict when phase changes occur in a material.

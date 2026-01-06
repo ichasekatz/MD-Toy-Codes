@@ -1,0 +1,24 @@
+#!/bin/bash
+
+#SBATCH --job-name=LammpsJobExample1  #JobName
+#SBATCH --time=1:00:00  #HH:MM:SS
+#SBATCH --nodes=1       # 1 NODE
+#SBATCH --ntasks-per-node=8          #Request 8 tasks/cores per node| Max cores is 48
+#SBATCH --mem=8G                     #Request 8GB per node| Max is 384G
+#SBATCH --output=lmp.%j      #Send stdout/err to "lmp.[jobID]"
+
+##OPTIONAL| COMMENTED OUT FOR NOW
+##SBATCH --account=123456             #Set billing account to 123456
+##SBATCH --mail-type=END             #Send email on all job END
+##SBATCH --mail-user=tcagin@tamu.edu    #Send all emails to email_address
+
+module purge
+
+ml GCC/8.3.0
+ml OpenMPI/3.1.4
+ml iccifort/2019.5.281
+ml impi/2018.5.288
+ml LAMMPS/3Mar2020-Python-3.7.4-kokkos
+
+cd $SLURM_SUBMIT_DIR
+mpirun -n 8 lmp -in in.nanowire.txt > log.lammps

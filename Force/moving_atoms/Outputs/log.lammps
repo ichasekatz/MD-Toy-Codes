@@ -1,0 +1,75 @@
+LAMMPS (29 Aug 2024 - Update 1)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+units metal
+dimension 3
+boundary p p p
+atom_style atomic
+
+region my_box block 0 50 0 50 0 50
+create_box 2 my_box
+Created orthogonal box = (0 0 0) to (50 50 50)
+  1 by 1 by 1 MPI processor grid
+
+mass 1 10
+mass 2 10
+
+create_atoms 1 single 25 25 25
+Created 1 atoms
+  using lattice units in orthogonal box = (0 0 0) to (50 50 50)
+  create_atoms CPU = 0.000 seconds
+create_atoms 2 single 30 25 25
+Created 1 atoms
+  using lattice units in orthogonal box = (0 0 0) to (50 50 50)
+  create_atoms CPU = 0.000 seconds
+
+group atom1 type 1
+1 atoms in group atom1
+group atom2 type 2
+1 atoms in group atom2
+
+fix 1 atom1 addforce 10.0 0.0 0.0
+fix 2 atom2 addforce 0.0 10.0 0.0
+
+velocity atom1 set 0.0 0.0 0.0
+velocity atom2 set 0.0 0.0 0.0
+
+fix 3 all nve
+
+dump 1 all custom 100 movingatoms.dump id type x y z fx fy fz
+
+timestep 0.001
+run 1000
+WARNING: No pairwise cutoff or binsize set. Atom sorting therefore disabled. (src/atom.cpp:2442)
+WARNING: Communication cutoff is 0.0. No ghost atoms will be generated. Atoms may get lost. (src/comm_brick.cpp:210)
+Per MPI rank memory allocation (min/avg/max) = 2.297 | 2.297 | 2.297 Mbytes
+   Step          Temp          E_pair         E_mol          TotEng         Press     
+         0   0              0              0              0              0            
+      1000   7.4644306e+08  0              0              96485.338      824461.55    
+Loop time of 0.000753 on 1 procs for 1000 steps with 2 atoms
+
+Performance: 114741.036 ns/day, 0.000 hours/ns, 1328021.248 timesteps/s, 2.656 Matom-step/s
+88.8% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0          | 0          | 0          |   0.0 |  0.00
+Neigh   | 4.9e-05    | 4.9e-05    | 4.9e-05    |   0.0 |  6.51
+Comm    | 0.000215   | 0.000215   | 0.000215   |   0.0 | 28.55
+Output  | 0.000131   | 0.000131   | 0.000131   |   0.0 | 17.40
+Modify  | 0.000176   | 0.000176   | 0.000176   |   0.0 | 23.37
+Other   |            | 0.000182   |            |       | 24.17
+
+Nlocal:              2 ave           2 max           2 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:              0 ave           0 max           0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:              0 ave           0 max           0 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 0
+Ave neighs/atom = 0
+Neighbor list builds = 933
+Dangerous builds = 896
+Total wall time: 0:00:00

@@ -1,0 +1,141 @@
+# Variables
+
+variable T0		equal 1
+variable T1		equal 100
+variable T2		equal 300
+variable step_equi	equal 5000
+variable step_ramp	equal 1000
+variable step_relax	equal 1000
+variable thermo_step	equal 10
+
+variable P0             equal 1
+variable P1             equal 1
+variable P2             equal 2500
+
+variable vstep  equal           "step"
+variable vpe    equal           "pe"
+variable vtemp  equal           "temp"
+variable venth equal        "enthalpy"
+variable vte    equal           "etotal"
+variable vke    equal           "ke"
+
+variable vvol equal             "vol"
+variable vlx  equal		"lx"
+variable vly  equal		"ly"
+variable vlz  equal		"lz"
+variable vxy  equal		"xy"
+variable vxz  equal		"xz"
+variable vyz  equal		"yz"
+
+variable vpress equal           "press"
+variable vpxx   equal		"pxx"
+variable vpyy	equal		"pyy"
+variable vpzz	equal		"pzz"
+variable vpxy	equal		"pxy"
+variable vpyz	equal		"pyz"
+variable vpxz	equal		"pxz"
+
+# Initialization
+
+units		metal 
+dimension 	3
+boundary 	p p p 
+atom_style	atomic
+
+#
+# Crystal/Structure Setup
+#lattice 	fcc ${latparam}
+#region		myreg block 0 ${dim} 0 ${dim} 0 ${dim} 
+#create_box	1 myreg
+#create_atoms 	1 box
+#mass		1 26.9815386
+
+#
+# read structure data
+read_data 	SiC101010.xyz
+
+#
+# Potentials
+#
+#pair_style 	eam/alloy
+pair_style	tersoff
+pair_coeff      * * ./SiC.tersoff C Si 
+#pair_coeff	* * ./SiC_1989.tersoff C Si
+#pair_coeff	* * ./SiC_1990.tersoff C Si
+#pair_coeff      * * ./SiC_1994.tersoff C Si
+#pair_coeff      * * ./SiC_Erhart-Albe.tersoff C Si
+
+# Computes
+
+#compute myrdf all rdf 100
+#compute peratom all pe/atom 
+
+# minimize in case needed 
+#
+
+minimize 0 0 1000 1000
+
+# Equilibrium - assign velocities at T1=100
+
+velocity 	all create ${T1} 87654321 dist gaussian
+velocity 	all zero linear
+velocity 	all zero angular
+
+timestep 	0.001 # fs
+reset_timestep  0
+
+# Run 100 K 
+thermo		10
+thermo_style    custom step temp ke pe etotal vol lx ly lz press pxx pyy pzz pxy pxz pyz
+fix begin       all nve temp 1 1 
+fix begin_out   all print 10 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vly} ${vlz} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy}" &
+                file out${T0}K.txt screen no
+
+run             ${step_equi}
+
+unfix           begin
+unfix           begin_out
+
+# Raise temperature to 300 K
+
+thermo          10
+fix ramp	all nvt temp ${T1} ${T2} 0.1
+fix ramp_out	all print 10 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vly} ${vlz} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy}" &
+                file out${T1}to${T2}K.rmp screen no
+
+run             ${step_ramp}
+
+write_restart   restart_${T1}to${T2}K.rmp
+
+unfix           ramp_out
+unfix		ramp
+
+thermo          10
+fix npt1        all npt temp ${T2} ${T2} 1. iso ${P0} ${P0} 1.0 
+fix npt1_out    all print 10 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vly} ${vlz} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy}" &
+                file out_${T1}to${T2}K.npt1 screen no
+
+run             ${step_relax}
+
+write_restart   restart_${T2}K.npt1
+
+unfix           npt1
+unfix           npt1_out
+
+
+# equilibrate at T2
+#
+thermo          10
+fix npt2       all npt temp ${T2} ${T2} 1. iso ${P0} ${P0} 1.0
+fix npt2_out   all print 10 "${vstep} ${vtemp} ${vke} ${vpe} ${vte} ${venth} ${vvol} ${vlx} ${vly} ${vlz} ${vpress} ${vpxx} ${vpyy} ${vpzz} ${vpxy}" &
+                file out_at${T2}K.iso screen no
+
+run             ${step_equi}
+
+write_restart   restart_at${T2}K.npt2
+
+unfix           npt2
+unfix           npt2_out
+
+
+print "Job Complete"
